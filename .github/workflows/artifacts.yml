@@ -1,0 +1,38 @@
+name: Artifacts Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          mkdir -p build
+          echo "Build completed at $(date)" > build/info.txt
+          echo "Version: 1.0.0" >> build/info.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-files
+          path: build/
+          retention-days: 5
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-files
+          path: build/
+
+      - name: Use artifact
+        run: cat build/info.txt
