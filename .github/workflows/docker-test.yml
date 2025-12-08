@@ -1,0 +1,25 @@
+name: Docker Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Build Docker image
+      run: docker build -t cicd-app:test .
+    
+    - name: Run tests in container
+      run: docker run cicd-app:test
+    
+    - name: Show container info
+      run: |
+        docker ps -a
+        docker images
