@@ -1,10 +1,9 @@
-name: Use Reusable Workflow
+name: Call Reusable
 
 on: [push]
 
 jobs:
-  call-test:
-    uses: .github/workflows/reusable-test.yml
+  test:
+    uses: ./.github/workflows/reusable-test.yml
     with:
       node-version: '18'
-      os: 'ubuntu-latest'

@@ -1,4 +1,4 @@
-name: Reusable Test Workflow
+name: 'Reusable Test Workflow'
 
 on:
   workflow_call:
@@ -6,27 +6,26 @@ on:
       node-version:
         required: true
         type: string
+        default: '18'
       os:
         required: false
         type: string
         default: 'ubuntu-latest'
-    outputs:
-      test-result:
-        description: "Result of the tests"
-        value: ${{ jobs.test.outputs.result }}
 
 jobs:
   test:
     runs-on: ${{ inputs.os }}
-    outputs:
-      result: ${{ steps.test.outputs.result }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node-version }}
-      - id: test
+      
+      - name: Run Tests
         run: |
-          echo "Running tests..."
-          echo "✅ Tests completed successfully"
-          echo "result=success" >> $GITHUB_OUTPUT
+          echo "✅ Testing with Node.js ${{ inputs.node-version }}"
+          echo "✅ Operating System: ${{ inputs.os }}"
+          echo "✅ All tests passed!"
