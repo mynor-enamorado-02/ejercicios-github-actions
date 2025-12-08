@@ -1,0 +1,29 @@
+name: Ejecutar en Self-Hosted Runner
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Permite ejecución manual
+
+jobs:
+  test-self-hosted:
+    runs-on: self-hosted  # ← Esto es clave
+    
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Mostrar información del sistema
+        run: |
+          echo "Ejecutando en self-hosted runner"
+          uname -a
+          whoami
+          pwd
+
+      - name: Ejecutar script de ejemplo
+        run: |
+          echo "Este job corre en tu propia máquina"
+          echo "Puedes instalar dependencias personalizadas"
+          echo "Usa recursos locales y no consume minutos de GitHub"
