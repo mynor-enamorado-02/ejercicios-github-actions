@@ -1,0 +1,118 @@
+name: Cache Testing Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Permite ejecución manual
+
+jobs:
+  test-without-cache:
+    name: Test SIN cache
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Instalar dependencias (SIN cache)
+      run: npm install
+      
+    - name: Ejecutar tests
+      run: npm test
+      
+    - name: Limpiar para siguiente job
+      run: rm -rf node_modules
+
+  test-with-auto-cache:
+    name: Test CON cache automático
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js con cache automático
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm' # Caching automático de npm
+    
+    - name: Instalar dependencias
+      run: npm install
+      
+    - name: Ejecutar tests
+      run: npm test
+
+  test-with-manual-cache:
+    name: Test CON cache manual
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    # Cache manual usando actions/cache
+    - name: Cache node modules (manual)
+      uses: actions/cache@v3
+      id: npm-cache
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+    
+    - name: Instalar dependencias
+      run: npm install
+      
+    - name: Ejecutar tests
+      run: npm test
+
+  test-comparison:
+    name: Comparar resultados
+    runs-on: ubuntu-latest
+    needs: [test-without-cache, test-with-auto-cache, test-with-manual-cache]
+    steps:
+    - name: Mostrar comparación
+      run: |
+        echo "=== RESULTADOS DEL CACHING ==="
+        echo ""
+        echo "Los 3 jobs anteriores ejecutaron las mismas pruebas:"
+        echo "1. SIN cache: Instala todo desde cero cada vez"
+        echo "2. CON cache automático: Usa cache integrado de setup-node"
+        echo "3. CON cache manual: Usa actions/cache para ~/.npm"
+        echo ""
+        echo "Para ver los tiempos específicos:"
+        echo "1. Ve a la pestaña 'Actions' en GitHub"
+        echo "2. Haz clic en la ejecución más reciente"
+        echo "3. Compara los tiempos de 'Instalar dependencias' en cada job"
+        echo ""
+        echo "Nota: El primer run puede no mostrar mejoras significativas"
+        echo "      Ejecuta el workflow 2-3 veces para ver el efecto completo del cache."
+        
+    - name: Crear resumen
+      run: |
+        echo "## Preguntas del Ejercicio" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ¿Cuánto tiempo se ahorra con el cache?" >> $GITHUB_STEP_SUMMARY
+        echo "- **Sin cache**: ~30-60 segundos instalando dependencias" >> $GITHUB_STEP_SUMMARY
+        echo "- **Con cache**: ~5-10 segundos (80-90% más rápido)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ¿Qué pasa si cambias el package.json?" >> $GITHUB_STEP_SUMMARY
+        echo "- El hash cambia, por lo que se genera un nuevo cache" >> $GITHUB_STEP_SUMMARY
+        echo "- El sistema detecta que package-lock.json es diferente" >> $GITHUB_STEP_SUMMARY
+        echo "- Se pierde el 'cache hit' y se instala desde cero" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ¿Cómo se relaciona esto con sistemas de archivos en SO?" >> $GITHUB_STEP_SUMMARY
+        echo "- El cache usa el sistema de archivos del runner" >> $GITHUB_STEP_SUMMARY
+        echo "- Los archivos se almacenan en directorios temporales" >> $GITHUB_STEP_SUMMARY
+        echo "- Similar a ~/.npm cache en sistemas locales" >> $GITHUB_STEP_SUMMARY
+        echo "- Diferentes OS usan diferentes ubicaciones de cache" >> $GITHUB_STEP_SUMMARY
