@@ -1,0 +1,72 @@
+name: Debugging Workflow
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Permite ejecución manual
+
+jobs:
+  debug-example:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    # Habilitar debug output
+    - name: Enable debug
+      run: echo "ACTIONS_STEP_DEBUG=true" >> $GITHUB_ENV
+
+    - name: Debug info
+      run: |
+        echo "::debug::This is a debug message"
+        echo "::warning::This is a warning"
+        echo "::error::This is an error"
+
+        echo "Current directory: $(pwd)"
+        echo "Files:"
+        ls -la
+
+        echo "Environment variables:"
+        env | sort
+
+    - name: Conditional debugging
+      if: runner.debug == '1'
+      run: |
+        echo "Debug mode enabled!"
+        set -x  # Enable bash debug mode
+        echo "Running some commands..."
+        node --version
+        npm --version
+
+    # Comandos útiles para debugging:
+    - name: View context variables
+      run: |
+        echo "GitHub context:"
+        echo '${{ toJSON(github) }}'
+        
+        echo "Runner context:"
+        echo '${{ toJSON(runner) }}'
+        
+        echo "Job context:"
+        echo '${{ toJSON(job) }}'
+    
+    - name: List files
+      run: find . -type f -name "*.js" -o -name "*.json" | head -20
+    
+    - name: View processes
+      run: ps aux | head -20
+
+    # ERROR INTENCIONAL - Tarea 1
+    - name: Introduce intentional error
+      run: |
+        echo "This will fail on purpose..."
+        # Comando que no existe
+        non-existent-command
+        
+    # Continúa incluso si falla
+    - name: Continue after error
+      if: failure()
+      run: |
+        echo "Previous step failed, but we continue..."
+        echo "This shows how to handle failures"
