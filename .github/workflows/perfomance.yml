@@ -1,0 +1,164 @@
+name: Ejercicio 10 - Performance y Recursos
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Permite ejecución manual
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 1. Checkout del código
+    - uses: actions/checkout@v4
+    
+    # 2. Información inicial del sistema
+    - name: System info before
+      id: sys-before
+      run: |
+        echo "=== RECURSOS INICIALES ==="
+        echo ""
+        
+        echo "📊 CPU:"
+        echo "Núcleos: $(nproc)"
+        lscpu | grep "Model name" | sed 's/Model name:/Modelo:/'
+        echo ""
+        
+        echo "💾 Memoria:"
+        free -h
+        echo ""
+        
+        echo "💿 Disco:"
+        df -h
+        echo ""
+        
+        echo "📈 Procesos activos:"
+        ps aux --no-headers | wc -l
+        echo ""
+        
+        echo "⏰ Tiempo inicial: $(date '+%Y-%m-%d %H:%M:%S')"
+        
+        # Guardar métricas para comparación
+        MEM_INICIAL=$(free -m | awk '/^Mem:/{print $3}')
+        echo "MEM_INICIAL_MB=$MEM_INICIAL" >> $GITHUB_ENV
+        
+    # 3. Operación pesada (con caché para optimizar)
+    - name: Cache dependencies
+      id: cache-npm
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-
+    
+    - name: Heavy operation
+      id: heavy-op
+      timeout-minutes: 10  # Timeout para evitar ejecuciones infinitas
+      run: |
+        echo "▶️ Iniciando operaciones pesadas..."
+        START_TIME=$(date +%s)
+        
+        # Instalar dependencias
+        echo "📦 Instalando dependencias..."
+        npm ci --silent
+        
+        # Ejecutar tests (simula carga)
+        echo "🧪 Ejecutando tests..."
+        npm test 2>&1 | tail -20
+        
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        echo "DURACION_SEGUNDOS=$DURATION" >> $GITHUB_ENV
+        echo "✅ Operación completada en $DURATION segundos"
+        
+    # 4. Información del sistema después
+    - name: System info after
+      if: always()  # Siempre ejecutar, incluso si fallan pasos anteriores
+      run: |
+        echo ""
+        echo "=== RECURSOS DESPUÉS ==="
+        echo ""
+        
+        echo "📊 CPU (uso):"
+        top -bn1 | grep "Cpu(s)" | awk '{print "Uso: " $2 "% us"}'
+        echo ""
+        
+        echo "💾 Memoria:"
+        free -h
+        echo ""
+        
+        # Comparación de memoria usada
+        MEM_ACTUAL=$(free -m | awk '/^Mem:/{print $3}')
+        MEM_USADA=$((MEM_ACTUAL - $MEM_INICIAL_MB))
+        echo "📈 Memoria adicional usada: ${MEM_USADA} MB"
+        echo ""
+        
+        echo "💿 Disco:"
+        df -h
+        DISCO_USADO=$(df -h . | awk 'NR==2 {print $5}')
+        echo "Uso de disco en workspace: $DISCO_USADO"
+        echo ""
+        
+        echo "📈 Procesos activos:"
+        ps aux --no-headers | wc -l
+        echo ""
+        
+        echo "⏰ Tiempo final: $(date '+%Y-%m-%d %H:%M:%S')"
+    
+    # 5. Métricas de tiempo
+    - name: Time measurement
+      run: |
+        echo ""
+        echo "=== TIEMPOS DE EJECUCIÓN ==="
+        echo ""
+        
+        # Usar variable del job si está disponible
+        if [ -n "$DURACION_SEGUNDOS" ]; then
+          echo "⏱️  Duración de 'Heavy operation': $DURACION_SEGUNDOS segundos"
+        fi
+        
+        echo "📊 Estadísticas del runner:"
+        echo "Runner: ${{ runner.os }} - ${{ runner.name }}"
+        echo "Workflow: ${{ github.workflow }}"
+        
+    # 6. Análisis de cuellos de botella
+    - name: Analyze bottlenecks
+      if: always()
+      run: |
+        echo ""
+        echo "=== ANÁLISIS DE RENDIMIENTO ==="
+        echo ""
+        
+        # Analizar procesos que más CPU usan
+        echo "🔍 Top 5 procesos por CPU:"
+        ps aux --sort=-%cpu | head -6 | awk '{print $3 "% CPU - " $11}'
+        echo ""
+        
+        # Analizar procesos que más memoria usan
+        echo "🔍 Top 5 procesos por memoria:"
+        ps aux --sort=-%mem | head -6 | awk '{print $4 "% MEM - " $11}'
+        echo ""
+        
+        # Recomendaciones básicas
+        echo "💡 RECOMENDACIONES:"
+        echo "1. Usa caching para dependencias (npm, pip, etc.)"
+        echo "2. Divide jobs largos en varios más pequeños"
+        echo "3. Usa runners más potentes si necesitas más recursos"
+        echo "4. Limpia archivos temporales después de cada step"
+        echo "5. Considera jobs paralelos cuando sea posible"
+    
+    # 7. Limpieza opcional
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "🧹 Limpiando archivos temporales..."
+        # Limpiar cache npm si es muy grande
+        # npm cache clean --force
+        
+        # Mostrar espacio liberado
+        echo "Espacio disponible después de limpieza:"
+        df -h . | awk 'NR==2 {print "Disco: " $4 " libres de " $2}'
