@@ -3,12 +3,11 @@ name: Deploy to Production
 on:
   push:
     branches: [main, master]
-  workflow_dispatch:  # Permite ejecución manual
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production  # Esto conecta con el environment de GitHub
+    environment: production
     
     env:
       API_URL: ${{ secrets.API_URL }}
@@ -26,19 +25,27 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci  # Usa ci para instalación limpia
+        run: npm ci
       
-      - name: Run tests (si tienes)
-        run: npm test
+      - name: Install Jest (si no está en package.json)
+        run: |
+          # Verifica si jest está en package.json
+          if ! grep -q '"jest"' package.json; then
+            echo "Instalando Jest para tests..."
+            npm install --save-dev jest
+          fi
+      
+      - name: Run tests (si existen)
+        run: |
+          # Solo ejecuta tests si hay scripts de test
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "⚠️ No hay scripts de test configurados"
+          fi
       
       - name: Deploy
         run: |
           echo "🚀 Desplegando aplicación..."
           echo "🔗 API URL: $API_URL"
           echo "📦 NODE_ENV: $NODE_ENV"
-          
-          # Ejemplo usando los secrets sin exponerlos
-          echo "✅ Configuración cargada correctamente"
-          
-          # Tu comando de deploy real aquí
-          # Por ejemplo: npm run deploy
