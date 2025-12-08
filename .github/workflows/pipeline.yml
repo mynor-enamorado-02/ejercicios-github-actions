@@ -1,4 +1,4 @@
-name: Pipeline Complete
+name: Pipeline Completo con Stages
 
 on:
   push:
